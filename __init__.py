@@ -636,6 +636,17 @@ class MiniMaxH3ChunkGenerator:
             print(f"[H3-Generator] ✓ Chunk {chunk_num} (Take {new_take_idx}) saved: {target_file.name} ({chunk_cost:.2f}s)")
             global_pbar.update_absolute(base_step_offset + steps_per_chunk, total_global_steps)
 
+            # [메모리 최적화] 거대 비디오 프레임/텐서 및 임베딩 객체 즉시 해제하여 RAM 누적 방지
+            try:
+                del chunk_slice, chunk_images, ref_vids, cond_output, cond, latent
+                del guider_out, guider, noise_out, noise, samples_tensor, samples
+                del decoded_images, chunk_video_out, chunk_video
+            except Exception:
+                pass
+            import gc
+            gc.collect()
+            comfy.model_management.soft_empty_cache()
+
         # Save source audio for instant muxing
         source_audio_path = output_dir / "source_audio.mp4"
         if not source_audio_path.exists():
@@ -694,31 +705,45 @@ class MiniMaxH3ChunkGenerator:
         }
 
         # =========================================================
-        # 최초 전체 생성이 완료되면 자동으로 완성본 1차 무손실 병합 비디오 생성
+        # 최초 전체 생성이 완료되면 ffmpeg 무손실 직접 병합 (RAM 소모 0MB)
         # =========================================================
         merged_video = None
         try:
-            valid_objs = []
-            for f_path in final_files_list:
-                if f_path and os.path.exists(f_path) and os.path.getsize(f_path) > 1024:
-                    valid_objs.append(nv.InputImpl.VideoFromFile(f_path))
-
-            if len(valid_objs) == total_chunks:
-                full_audio = video.get_components().audio
-                print(f"[H3-Generator] 🎬 최초 전체 생성 완료 -> 완성본 자동 무손실 병합 중 ({total_chunks}개 컷)...")
-                merged_video = nv.InputImpl.VideoFromList(
-                    valid_objs,
-                    full_audio,
-                    nv.Types.VideoCodec.H264
-                )
+            valid_paths = [p for p in final_files_list if p and os.path.exists(p) and os.path.getsize(p) > 1024]
+            if len(valid_paths) == total_chunks:
+                print(f"[H3-Generator] 🎬 최초 전체 생성 완료 -> ffmpeg 무손실 직접 병합 중 ({total_chunks}개 컷, RAM 소모 0MB)...")
                 auto_merged_file = output_dir / "merged" / f"initial_full_merged_{time.strftime('%Y%m%d_%H%M%S')}.mp4"
                 auto_merged_file.parent.mkdir(parents=True, exist_ok=True)
-                merged_video.save_to(str(auto_merged_file))
-                print(f"[H3-Generator] ✓ 최초 완성본 자동 저장 완료: {auto_merged_file.name}")
+
+                concat_list_file = output_dir / "merged" / f"_concat_{int(time.time())}.txt"
+                with open(concat_list_file, "w", encoding="utf-8") as f_cl:
+                    for vp in valid_paths:
+                        f_cl.write(f"file '{vp}'\n")
+
+                ffmpeg_bin = "/home/ktship/ComfyUI/venv/bin/ffmpeg" if os.path.exists("/home/ktship/ComfyUI/venv/bin/ffmpeg") else "ffmpeg"
+                res = subprocess.run([
+                    ffmpeg_bin, "-y",
+                    "-f", "concat",
+                    "-safe", "0",
+                    "-i", str(concat_list_file),
+                    "-c", "copy",
+                    str(auto_merged_file)
+                ], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, timeout=30)
+
+                try:
+                    concat_list_file.unlink()
+                except Exception:
+                    pass
+
+                if auto_merged_file.exists() and auto_merged_file.stat().st_size > 1024:
+                    print(f"[H3-Generator] ✓ 최초 완성본 무손실 직접 저장 완료: {auto_merged_file.name}")
+                    merged_video = nv.InputImpl.VideoFromFile(str(auto_merged_file))
+                else:
+                    print(f"[H3-Generator] Note: fallback to first chunk after ffmpeg concat: {res.stderr[:150] if res else ''}")
+                    merged_video = nv.InputImpl.VideoFromFile(valid_paths[0])
             else:
-                # Fallback: if only partial chunks or retry
-                if valid_objs:
-                    merged_video = valid_objs[0]
+                if valid_paths:
+                    merged_video = nv.InputImpl.VideoFromFile(valid_paths[0])
                 else:
                     merged_video = video
         except Exception as e:
