@@ -340,16 +340,28 @@ class MiniMaxH3VideoChunker:
         raw_fingerprint = f"{dims[0]}x{dims[1]}_{total_duration:.3f}_{fps:.2f}_{frame_cnt}_{chunk_duration:.2f}"
         video_fingerprint = hashlib.md5(raw_fingerprint.encode("utf-8")).hexdigest()[:12]
 
+        # 최소 유효 청크 길이 (1초 미만의 극소 잔여 시간은 독립 청크로 만들지 않고 직전 청크에 흡수)
+        MIN_CHUNK_DUR = 1.0
+
         chunks = []
         curr_t = 0.0
         while curr_t < total_duration:
             rem = total_duration - curr_t
             if rem <= chunk_duration:
-                chunks.append((curr_t, rem))
+                if rem < MIN_CHUNK_DUR and chunks:
+                    prev_start, _ = chunks[-1]
+                    chunks[-1] = (prev_start, total_duration - prev_start)
+                else:
+                    chunks.append((curr_t, rem))
                 break
             else:
-                chunks.append((curr_t, chunk_duration))
-                curr_t += chunk_duration
+                next_rem = rem - chunk_duration
+                if 0 < next_rem < MIN_CHUNK_DUR:
+                    chunks.append((curr_t, rem))
+                    break
+                else:
+                    chunks.append((curr_t, chunk_duration))
+                    curr_t += chunk_duration
 
         total_chunks = len(chunks)
         print(f"\n[H3-Chunker] Video ({total_duration:.2f}s, {dims[0]}x{dims[1]}, {fps:.2f}fps) -> {total_chunks} chunks ({chunk_duration}s target).")
@@ -538,6 +550,11 @@ class MiniMaxH3ChunkGenerator:
             else:
                 new_take_idx = len(existing) + 1
                 target_file = chunks_dir / f"chunk_{chunk_num:03d}_take_{new_take_idx:02d}.mp4"
+
+            if c_dur < 0.5:
+                print(f"\n[H3-Generator] ⚠️ 청크 {chunk_num}/{total_chunks}의 길이({c_dur:.3f}초)가 너무 짧아(0.5초 미만) 건너뜁니다.")
+                global_pbar.update_absolute(base_step_offset + steps_per_chunk, total_global_steps)
+                continue
 
             print(f"\n[H3-Generator] >>> Generating Chunk {chunk_num}/{total_chunks} (Take {new_take_idx}) [Start: {c_start:.2f}s, Dur: {c_dur:.2f}s] <<<")
             chunk_start_time = time.time()
