@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+*.class
+*.bak*
+*.broken*
+*.orig
+.DS_Store
+Thumbs.db
