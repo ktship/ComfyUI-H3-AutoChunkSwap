@@ -617,7 +617,7 @@ app.registerExtension({
                         btnViewOrig.style.background = "rgba(13, 148, 136, 0.2)";
                         btnViewOrig.style.borderColor = "rgba(13, 148, 136, 0.45)";
                     };
-                    const origUrl = scene.original?.url || `/api/view?filename=chunk_${String(scene.sourceSlot || sceneIdx).padStart(3, '0')}_orig.mp4&subfolder=swapH3/${encodeURIComponent(sessionData.project_name)}/chunks&type=output`;
+                    const origUrl = scene.original?.url || `/api/view?filename=chunk_${String(scene.sourceSlot || sceneIdx).padStart(3, '0')}_orig.mp4&subfolder=H3Swap/${encodeURIComponent(sessionData.project_name)}/chunks&type=output`;
                     if (origUrl) {
                         const probeOrig = document.createElement("video");
                         probeOrig.preload = "metadata";

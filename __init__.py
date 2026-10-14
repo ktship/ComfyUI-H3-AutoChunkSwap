@@ -113,7 +113,7 @@ class MiniMaxH3ProjectStudio:
     """
     @classmethod
     def INPUT_TYPES(s):
-        projects_root = Path(folder_paths.get_output_directory()) / "h3_projects"
+        projects_root = Path(folder_paths.get_output_directory()) / "H3Swap"
         projects_root.mkdir(parents=True, exist_ok=True)
         existing_projects = ["✨ [새 프로젝트 / 자동 생성]"]
         for p in sorted(projects_root.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True):
@@ -169,7 +169,7 @@ class MiniMaxH3ProjectStudio:
         if not final_name:
             final_name = f"H3_Project_{time.strftime('%Y%m%d_%H%M%S')}"
 
-        project_dir = Path(folder_paths.get_output_directory()) / "h3_projects" / final_name
+        project_dir = Path(folder_paths.get_output_directory()) / "H3Swap" / final_name
         project_dir.mkdir(parents=True, exist_ok=True)
         chunks_dir = project_dir / "chunks"
         chunks_dir.mkdir(parents=True, exist_ok=True)
@@ -213,7 +213,7 @@ class MiniMaxH3ProjectStudio:
                 mtime = os.path.getmtime(t_file)
                 hash_tag = hashlib.md5(f"{t_file}_{mtime}".encode()).hexdigest()[:8]
                 file_time = time.strftime('%Y. %m. %d. %H:%M:%S', time.localtime(mtime))
-                rel_url = f"/api/view?filename={Path(t_file).name}&subfolder=h3_projects/{final_name}/chunks&type=output"
+                rel_url = f"/api/view?filename={Path(t_file).name}&subfolder=H3Swap/{final_name}/chunks&type=output"
                 actual_res = _get_video_file_res(t_file, res_str)
                 takes_list.append({
                     "hash": hash_tag,
@@ -240,7 +240,7 @@ class MiniMaxH3ProjectStudio:
                 except Exception:
                     pass
 
-            orig_url = f"/api/view?filename={orig_file.name}&subfolder=h3_projects/{final_name}/chunks&type=output" if orig_file.exists() else ""
+            orig_url = f"/api/view?filename={orig_file.name}&subfolder=H3Swap/{final_name}/chunks&type=output" if orig_file.exists() else ""
             orig_res = _get_video_file_res(str(orig_file), res_str) if orig_file.exists() else res_str
             orig_info = {
                 "url": orig_url,
@@ -271,7 +271,7 @@ class MiniMaxH3ProjectStudio:
             m_res = _get_video_file_res(str(p), res_str)
             merged_history.append({
                 "filename": p.name,
-                "url": f"/api/view?filename={p.name}&subfolder=h3_projects/{final_name}/merged&type=output",
+                "url": f"/api/view?filename={p.name}&subfolder=H3Swap/{final_name}/merged&type=output",
                 "timeStr": mtime_str,
                 "sizeMb": round(f_size_mb, 1),
                 "res": m_res,
@@ -280,7 +280,7 @@ class MiniMaxH3ProjectStudio:
 
         if merged_files:
             latest_merged_file = Path(merged_files[-1])
-            full_video_url = f"/api/view?filename={latest_merged_file.name}&subfolder=h3_projects/{final_name}/merged&type=output"
+            full_video_url = f"/api/view?filename={latest_merged_file.name}&subfolder=H3Swap/{final_name}/merged&type=output"
         else:
             full_video_url = scenes[0]["takes"][-1]["url"] if (scenes and scenes[0]["takes"]) else ""
 
@@ -1131,7 +1131,7 @@ try:
                 print(f"[H3-API] Mux rejected: {err_msg}")
                 return web.json_response({"error": err_msg, "details": chunk_resolutions}, status=400)
 
-            project_dir = Path(folder_paths.get_output_directory()) / "h3_projects" / project_name
+            project_dir = Path(folder_paths.get_output_directory()) / "H3Swap" / project_name
             merged_dir = project_dir / "merged"
             merged_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1191,7 +1191,7 @@ try:
                 print(f"[H3-API] FFmpeg error: {proc.stderr}")
                 return web.json_response({"error": "FFmpeg merge failed", "details": proc.stderr}, status=500)
 
-            rel_url = f"/api/view?filename={final_mp4.name}&subfolder=h3_projects/{project_name}/merged&type=output"
+            rel_url = f"/api/view?filename={final_mp4.name}&subfolder=H3Swap/{project_name}/merged&type=output"
             print(f"[H3-API] ✓ Project '{project_name}' successfully merged -> {final_mp4.name}")
 
             return web.json_response({
@@ -1206,7 +1206,7 @@ try:
 
     async def handle_list_projects(request):
         try:
-            projects_root = Path(folder_paths.get_output_directory()) / "h3_projects"
+            projects_root = Path(folder_paths.get_output_directory()) / "H3Swap"
             projects_root.mkdir(parents=True, exist_ok=True)
             projects = []
             for item in sorted(projects_root.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True):
@@ -1228,7 +1228,7 @@ try:
             if not project_name:
                 return web.json_response({"error": "Missing project_name"}, status=400)
 
-            project_dir = Path(folder_paths.get_output_directory()) / "h3_projects" / project_name
+            project_dir = Path(folder_paths.get_output_directory()) / "H3Swap" / project_name
             if not project_dir.exists():
                 return web.json_response({"error": "Project not found"}, status=404)
 
@@ -1272,7 +1272,7 @@ try:
                     mtime = os.path.getmtime(t_file)
                     hash_tag = hashlib.md5(f"{t_file}_{mtime}".encode()).hexdigest()[:8]
                     file_time = time.strftime('%Y. %m. %d. %H:%M:%S', time.localtime(mtime))
-                    rel_url = f"/api/view?filename={Path(t_file).name}&subfolder=h3_projects/{project_name}/chunks&type=output"
+                    rel_url = f"/api/view?filename={Path(t_file).name}&subfolder=H3Swap/{project_name}/chunks&type=output"
                     actual_res = _get_video_file_res(t_file, res_str)
                     takes_list.append({
                         "hash": hash_tag,
@@ -1298,7 +1298,7 @@ try:
                     except Exception:
                         pass
 
-                orig_url = f"/api/view?filename={orig_file.name}&subfolder=h3_projects/{project_name}/chunks&type=output" if orig_file.exists() else ""
+                orig_url = f"/api/view?filename={orig_file.name}&subfolder=H3Swap/{project_name}/chunks&type=output" if orig_file.exists() else ""
                 orig_res = _get_video_file_res(str(orig_file), res_str) if orig_file.exists() else res_str
                 orig_info = {
                     "url": orig_url,
@@ -1328,7 +1328,7 @@ try:
                 m_res = _get_video_file_res(str(p), res_str)
                 merged_history.append({
                     "filename": p.name,
-                    "url": f"/api/view?filename={p.name}&subfolder=h3_projects/{project_name}/merged&type=output",
+                    "url": f"/api/view?filename={p.name}&subfolder=H3Swap/{project_name}/merged&type=output",
                     "timeStr": mtime_str,
                     "sizeMb": round(f_size_mb, 1),
                     "res": m_res,
@@ -1337,7 +1337,7 @@ try:
 
             if merged_files:
                 latest_merged_file = Path(merged_files[-1])
-                full_video_url = f"/api/view?filename={latest_merged_file.name}&subfolder=h3_projects/{project_name}/merged&type=output"
+                full_video_url = f"/api/view?filename={latest_merged_file.name}&subfolder=H3Swap/{project_name}/merged&type=output"
             else:
                 full_video_url = scenes[0]["takes"][-1]["url"] if (scenes and scenes[0]["takes"]) else ""
 
@@ -1366,7 +1366,7 @@ try:
             if not clean_new_name:
                 return web.json_response({"error": "유효하지 않은 새 프로젝트 이름입니다."}, status=400)
 
-            projects_root = Path(folder_paths.get_output_directory()) / "h3_projects"
+            projects_root = Path(folder_paths.get_output_directory()) / "H3Swap"
             old_dir = projects_root / old_name
             new_dir = projects_root / clean_new_name
 
